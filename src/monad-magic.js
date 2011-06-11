@@ -25,6 +25,8 @@ var monad = {};
 monad.create = function (namespace, root){
   var obj = ns(namespace, root || module)
     , ctx = new monad.Context(obj);
+
+  ctx._hasInit = false;
   return ctx;
 }
 
@@ -47,6 +49,8 @@ monad.Context = function (klass){
   // TODO: This should run in the monad interface scope
   //       an instance should only be created if it wasn't created by the init func
   this.init = function (name, func){
+    this._hasInit = true;
+
     var klass = this.klass;
 
     this.klass[name] = function (){
@@ -86,14 +90,20 @@ monad.Context = function (klass){
    * excluding methods that are passed as arguments.
    */
   this.wrap = function (){
-    var excludes = Array.prototype.slice.call(arguments, 0);
+    //var excludes = Array.prototype.slice.call(arguments, 0);
+    var p = this.klass.prototype;
+    for (var method in p){
+      if (!p.hasOwnProperty(method) || typeof p[method] != 'function'){ continue; }
+      this.func(method, p[method]);
+    }
     return this;
   }
 
   /**
    * Finishes the monad declaration
    */
-  this.end = this.done = function (){
+  this.done = this.end = function (){
+    if (!this._hasInit){ this.init('create', this.klass); }
     return this.klass;
   }
 };
